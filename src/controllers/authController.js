@@ -5,10 +5,12 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL;
+// Cross-origin (frontend on different domain): must use sameSite: 'none' + secure so browser sends cookie
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
   path: '/',
 };
@@ -162,10 +164,10 @@ exports.logout = async (req, res) => {
     if (token) {
       await Session.deleteOne({ token });
     }
-    res.clearCookie('session_token', { path: '/', httpOnly: true, sameSite: 'lax' });
+    res.clearCookie('session_token', { path: '/', httpOnly: true, secure: isProduction, sameSite: isProduction ? 'none' : 'lax' });
     res.json({ success: true, message: 'Logged out' });
   } catch (err) {
-    res.clearCookie('session_token', { path: '/', httpOnly: true, sameSite: 'lax' });
+    res.clearCookie('session_token', { path: '/', httpOnly: true, secure: isProduction, sameSite: isProduction ? 'none' : 'lax' });
     res.json({ success: true, message: 'Logged out' });
   }
 };
