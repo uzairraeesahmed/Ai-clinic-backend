@@ -41,21 +41,21 @@ app.get('/', (req, res) => {
   res.json({ message: 'API is running' });
 });
 
-// Vercel: export serverless handler (so vercel.json can use this file)
-if (process.env.VERCEL) {
-  const serverless = require('serverless-http');
-  let dbReady = null;
-  module.exports = async (req, res) => {
-    try {
-      if (!dbReady) dbReady = connectDB();
-      await dbReady;
-      return serverless(app)(req, res);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Server error', error: err.message });
-    }
-  };
-} else {
+// Always export handler for Vercel (Express app is a (req, res) handler)
+let dbReady = null;
+module.exports = async (req, res) => {
+  try {
+    if (!dbReady) dbReady = connectDB();
+    await dbReady;
+    app(req, res);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// When not on Vercel, also start the normal server (local dev)
+if (!process.env.VERCEL) {
   connectDB()
     .then(() => {
       app.listen(PORT, () => {
