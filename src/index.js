@@ -41,14 +41,29 @@ app.get('/', (req, res) => {
   res.json({ message: 'API is running' });
 });
 
-// Connect to MongoDB and start server
-connectDB()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+// Vercel: export serverless handler (so vercel.json can use this file)
+if (process.env.VERCEL) {
+  const serverless = require('serverless-http');
+  let dbReady = null;
+  module.exports = async (req, res) => {
+    try {
+      if (!dbReady) dbReady = connectDB();
+      await dbReady;
+      return serverless(app)(req, res);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Server error', error: err.message });
+    }
+  };
+} else {
+  connectDB()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+      });
+    })
+    .catch((err) => {
+      console.error('Failed to start server:', err);
+      process.exit(1);
     });
-  })
-  .catch((err) => {
-    console.error('Failed to start server:', err);
-    process.exit(1);
-  });
+}
